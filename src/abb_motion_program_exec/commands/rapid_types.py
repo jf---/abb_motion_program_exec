@@ -18,8 +18,6 @@ Types mirror the ABB Robot Controller's RAPID language. Documentation is taken f
 ABB Robotics manual "Technical reference manual RAPID Instructions, Functions and Data types".
 """
 
-from __future__ import annotations
-
 from enum import IntEnum
 from typing import NamedTuple
 

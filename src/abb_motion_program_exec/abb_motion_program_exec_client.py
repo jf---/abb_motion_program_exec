@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import annotations
 
 import datetime
 import io
@@ -68,7 +67,7 @@ def _unpack_motion_program_result_log(b: bytes) -> MotionProgramResultLog:
 
 def _get_motion_program_file(
     path: str,
-    motion_program: MotionProgram,
+    motion_program: "MotionProgram",
     task: str = "T_ROB1",
     preempt_number: int | None = None,
     seqno: int | None = None,
@@ -88,7 +87,7 @@ def _get_motion_program_file(
 
 
 def _validate_multimove(
-    motion_programs: list[MotionProgram], tasks: list[str] | None
+    motion_programs: list["MotionProgram"], tasks: list[str] | None
 ) -> list[str]:
     """Validate and resolve task list for MultiMove programs. Returns resolved tasks."""
     if tasks is None:
@@ -104,7 +103,7 @@ def _validate_multimove(
 
 def _prepare_multimove_files(
     ramdisk: str,
-    motion_programs: list[MotionProgram],
+    motion_programs: "list[MotionProgram]",
     tasks: list[str],
     preempt_number: int | None = None,
     seqno: int | None = None,
@@ -324,7 +323,7 @@ class MotionProgramExecClient:
 
     def execute_motion_program(
         self,
-        motion_program: MotionProgram,
+        motion_program: "MotionProgram",
         task: str = "T_ROB1",
         wait: bool = True,
         seqno: int | None = None,
@@ -349,7 +348,7 @@ class MotionProgramExecClient:
 
     def preempt_motion_program(
         self,
-        motion_program: MotionProgram,
+        motion_program: "MotionProgram",
         task: str = "T_ROB1",
         preempt_number: int = 1,
         preempt_cmdnum: int = -1,
