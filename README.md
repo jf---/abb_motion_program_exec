@@ -1,6 +1,6 @@
 # abb_motion_program_exec
 
-[![](https://img.shields.io/badge/python-3.6+-blue.svg)](https://github.com/rpiRobotics/abb_motion_program_exec)
+[![](https://img.shields.io/badge/python-3.9+-blue.svg)](https://github.com/rpiRobotics/abb_motion_program_exec)
 [![](https://img.shields.io/pypi/v/abb-motion-program-exec)](https://pypi.org/project/abb-motion-program-exec/)
 
 `abb_motion_program_exec` provides a simple way to download and run a sequence of

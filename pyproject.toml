@@ -51,10 +51,17 @@ abb_motion_program_exec = { path = ".", editable = true }
 
 [tool.pixi.tasks]
 test = "pytest tests -x -q -n auto"
+docs-build = "mkdocs build"
+docs-serve = "mkdocs serve"
 
 [tool.pixi.feature.test.pypi-dependencies]
 pytest = "*"
 pytest-xdist = "*"
 
+[tool.pixi.feature.docs.pypi-dependencies]
+mkdocs-material = "*"
+mkdocstrings = { version = "*", extras = ["python"] }
+
 [tool.pixi.environments]
 test = ["test"]
+docs = ["docs"]
