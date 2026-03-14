@@ -12,28 +12,47 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
+import abc
 import inspect
+import io
+from typing import ClassVar
+
+
+class CommandBase(abc.ABC):
+    """Base class for all motion program commands.
+
+    Subclasses must define ``command_opcode`` as a class variable and implement
+    ``write_params`` (binary serialization) and ``to_rapid`` (RAPID source generation).
+    """
+
+    command_opcode: ClassVar[int]
+
+    @abc.abstractmethod
+    def write_params(self, f: io.IOBase) -> None: ...
+
+    @abc.abstractmethod
+    def to_rapid(self, **kwargs) -> str: ...
+
 
 class command_append_method:
-    def __init__(self, command_cls):
+    """Descriptor that creates a method on MotionProgram which instantiates a command
+    and appends it to the program's command list."""
+
+    def __init__(self, command_cls: type[CommandBase]):
         self._command_cls = command_cls
-        self.__doc__ = command_cls._append_method_doc
 
     def __get__(self, obj, cls=None):
         if obj is None:
-            raise Exception("command_append_method must be called on an instance")
+            raise AttributeError("command_append_method must be called on an instance")
 
         def command_append_func(*args, **kwargs):
             cmd = self._command_cls(*args, **kwargs)
             obj._append_command(cmd)
             return cmd
 
-        ret = command_append_func
-        ret.__doc__ = self._command_cls._append_method_doc
         sig = inspect.signature(self._command_cls.__init__)
         sig = sig.replace(parameters=tuple(sig.parameters.values())[1:])
-        ret.__signature__ = sig
-        return ret
-
-class CommandBase:
-    pass
+        command_append_func.__signature__ = sig
+        command_append_func.__doc__ = self._command_cls.__doc__
+        return command_append_func

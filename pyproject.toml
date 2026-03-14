@@ -9,7 +9,7 @@ authors = [
 ]
 description = "Python package to execute motion commands on ABB robots and log results"
 license = {text = "Apache-2.0"}
-requires-python = ">=3.9"
+requires-python = ">=3.12"
 dependencies = [
     "requests>=2.31,<3",
     "numpy>=1.24,<3",
@@ -39,22 +39,44 @@ robotraconteur = [
 [tool.setuptools.package-data]
 "abb_motion_program_exec.robotraconteur" = ["*.robdef"]
 
+[tool.unasyncd]
+add_editors_note = true
+ruff_fix = true
+ruff_format = true
+transform_docstrings = true
+
+[tool.unasyncd.files]
+"src/abb_motion_program_exec/abb_motion_program_exec_client_aio.py" = "src/abb_motion_program_exec/_sync_client.py"
+
+[tool.unasyncd.per_file_add_replacements."src/abb_motion_program_exec/abb_motion_program_exec_client_aio.py"]
+"abb_robot_client.rws_aio.RWS_AIO" = "abb_robot_client.rws.RWS"
+"abb_client_aio" = "abb_client"
+"MotionProgramExecClientAIO" = "MotionProgramExecClient"
+"asyncio.sleep" = "time.sleep"
+"Async client" = "Synchronous client"
+
 [tool.pixi.workspace]
 channels = ["conda-forge"]
 platforms = ["osx-arm64", "linux-64"]
 
 [tool.pixi.dependencies]
-python = ">=3.9,<3.13"
+python = ">=3.12,<3.14"
 
 [tool.pixi.pypi-dependencies]
 abb_motion_program_exec = { path = ".", editable = true }
 
 [tool.pixi.tasks]
+unasync = { cmd = "unasyncd", description = "Generate sync client from async source" }
+unasync-check = { cmd = "unasyncd --check", description = "Verify sync client is up to date" }
 test = "pytest tests -x -q -n auto"
 docs-build = "mkdocs build"
 docs-serve = "mkdocs serve"
 vm-setup = { cmd = "bash config/vm_setup.sh", description = "Install vcconf.xml and firewall rule in Parallels VM" }
 vm-verify = { cmd = "bash config/vm_verify.sh", description = "Verify RWS connectivity to RobotStudio in Parallels VM" }
+
+[tool.pixi.feature.dev.pypi-dependencies]
+unasyncd = "*"
+ruff = "*"
 
 [tool.pixi.feature.test.pypi-dependencies]
 pytest = "*"
@@ -65,5 +87,6 @@ mkdocs-material = "*"
 mkdocstrings = { version = "*", extras = ["python"] }
 
 [tool.pixi.environments]
+dev = ["dev"]
 test = ["test"]
 docs = ["docs"]
