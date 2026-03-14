@@ -53,6 +53,8 @@ abb_motion_program_exec = { path = ".", editable = true }
 test = "pytest tests -x -q -n auto"
 docs-build = "mkdocs build"
 docs-serve = "mkdocs serve"
+vm-setup = { cmd = "bash config/vm_setup.sh", description = "Install vcconf.xml and firewall rule in Parallels VM" }
+vm-verify = { cmd = "bash config/vm_verify.sh", description = "Verify RWS connectivity to RobotStudio in Parallels VM" }
 
 [tool.pixi.feature.test.pypi-dependencies]
 pytest = "*"

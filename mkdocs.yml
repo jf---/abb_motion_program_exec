@@ -36,6 +36,7 @@ nav:
       - Overview: robot_setup.md
       - Single Robot: robot_setup_manual.md
       - Multi-Move: robot_multimove_setup_manual.md
+      - Virtual Machine (macOS): vm_setup.md
   - EGM: egm.md
   - API Reference:
       - Overview: abb_motion_program_exec/api_reference.md

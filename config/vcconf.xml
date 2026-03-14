@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VCConfiguration>
+  <RemoteVCConfiguration PublicationEnabled="true" />
+  <hosts>
+    <!-- macOS host IP on Parallels Shared Network (default) -->
+    <host ip="10.211.55.2"/>
+  </hosts>
+</VCConfiguration>
