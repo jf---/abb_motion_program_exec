@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import re
 from collections.abc import Callable
 
 from abb_robot_client.rws_aio import RWS_AIO
@@ -25,7 +24,10 @@ from .abb_motion_program_exec_client import (
     MotionProgram,
     MotionProgramResultLog,
     _get_motion_program_file,
+    _parse_event_log_for_result,
+    _prepare_multimove_files,
     _unpack_motion_program_result_log,
+    _validate_multimove,
 )
 
 logger = logging.getLogger(__name__)
@@ -119,19 +121,9 @@ class MotionProgramExecClientAIO:
         seqno: int | None = None,
     ):
         """Execute a motion program on a MultiMove system with multiple robots."""
-        if tasks is None:
-            tasks = [f"T_ROB{i + 1}" for i in range(len(motion_programs))]
-
-        if len(motion_programs) != len(tasks):
-            raise ValueError("Motion program list and task list must have same length")
-        if len(tasks) <= 1:
-            raise ValueError("Multimove program must have at least two tasks")
-
+        tasks = _validate_multimove(motion_programs, tasks)
         ramdisk = await self.abb_client_aio.get_ramdisk_path()
-        files = [
-            _get_motion_program_file(ramdisk, mp, task, seqno=seqno)
-            for mp, task in zip(motion_programs, tasks)
-        ]
+        files = _prepare_multimove_files(ramdisk, motion_programs, tasks, seqno=seqno)
 
         async def _upload():
             for filename, data in files:
@@ -152,19 +144,11 @@ class MotionProgramExecClientAIO:
         seqno: int | None = None,
     ):
         """Preempt a MultiMove motion program."""
-        if tasks is None:
-            tasks = [f"T_ROB{i + 1}" for i in range(len(motion_programs))]
-
-        if len(motion_programs) != len(tasks):
-            raise ValueError("Motion program list and task list must have same length")
-        if len(tasks) <= 1:
-            raise ValueError("Multimove program must have at least two tasks")
-
+        tasks = _validate_multimove(motion_programs, tasks)
         ramdisk = await self.abb_client_aio.get_ramdisk_path()
-        for mp, task in zip(motion_programs, tasks):
-            filename, b = _get_motion_program_file(
-                ramdisk, mp, task, preempt_number, seqno=seqno
-            )
+        for filename, b in _prepare_multimove_files(
+            ramdisk, motion_programs, tasks, preempt_number, seqno=seqno
+        ):
             await self.abb_client_aio.upload_file(filename, b)
         await self.abb_client_aio.set_analog_io(
             "motion_program_preempt_cmd_num", preempt_cmdnum
@@ -213,57 +197,9 @@ class MotionProgramExecClientAIO:
         self, prev_seqnum: int
     ) -> MotionProgramResultLog:
         """Read a motion program result log after completion."""
-        log_after_raw = await self.abb_client_aio.read_event_log()
-        log_after = []
-        for entry in log_after_raw:
-            if entry.seqnum > prev_seqnum:
-                log_after.append(entry)
-            elif prev_seqnum > 61440 and entry.seqnum < 4096:
-                # Handle uint16 wraparound
-                log_after.append(entry)
-            else:
-                break
-
-        failed = False
-        for entry in log_after:
-            if (
-                entry.msgtype >= 2
-                and entry.args
-                and entry.args[0].lower() == "motion program failed"
-            ):
-                raise RuntimeError(
-                    f"{entry.args[1]} {entry.args[2]} {entry.args[3]} {entry.args[4]}"
-                )
-            if entry.msgtype >= 3:
-                failed = True
-
-        if failed:
-            raise RuntimeError("Motion Program Failed, see robot error log for details")
-
-        found_log_open = False
-        found_log_close = False
-        log_filename = ""
-
-        for entry in reversed(log_after):
-            if entry.code == 80003:
-                if entry.args[0].lower() == "motion program log file closed":
-                    if found_log_open:
-                        if found_log_close:
-                            raise RuntimeError("Found more than one log closed message")
-                        found_log_close = True
-
-                if entry.args[0].lower() == "motion program log file opened":
-                    if found_log_open:
-                        raise RuntimeError("Found more than one log opened message")
-                    found_log_open = True
-                    log_filename_m = re.search(r"(log\-[\d\-]+\.bin)", entry.args[1])
-                    if not log_filename_m:
-                        raise RuntimeError("Invalid log opened message")
-                    log_filename = log_filename_m.group(1)
-
-        if not (found_log_open and found_log_close and log_filename):
-            raise RuntimeError("Could not find log file messages in robot event log")
-
+        log_filename = _parse_event_log_for_result(
+            await self.abb_client_aio.read_event_log(), prev_seqnum
+        )
         ramdisk = await self.abb_client_aio.get_ramdisk_path()
         log_contents = await self.abb_client_aio.read_file(f"{ramdisk}/{log_filename}")
         try:

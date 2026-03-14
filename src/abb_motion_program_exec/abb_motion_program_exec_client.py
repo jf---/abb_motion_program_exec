@@ -39,9 +39,18 @@ MOTION_PROGRAM_FILE_VERSION = 10011
 
 
 class MotionProgramResultLog(NamedTuple):
+    """Result log from an executed motion program.
+
+    Returned by ``execute_motion_program`` and ``read_motion_program_result_log``.
+    """
+
     timestamp: str
+    """Timestamp of the motion program execution (YYYY-MM-DD-HH-MM-SS-MSMS)."""
     column_headers: list[str]
+    """Column names for the data array (e.g. timestamp, command_number, joint positions)."""
     data: np.ndarray
+    """Recorded data as float32 array, shape (n_samples, n_columns). Wire format is
+    single-precision; use ``.astype(np.float64)`` if double precision is needed."""
 
 
 def _unpack_motion_program_result_log(b: bytes) -> MotionProgramResultLog:
@@ -76,6 +85,93 @@ def _get_motion_program_file(
         filename = f"{filename}_p{preempt_number}"
     filename = f"{filename}.bin"
     return filename, b
+
+
+def _validate_multimove(
+    motion_programs: list[MotionProgram], tasks: list[str] | None
+) -> list[str]:
+    """Validate and resolve task list for MultiMove programs. Returns resolved tasks."""
+    if tasks is None:
+        tasks = [f"T_ROB{i + 1}" for i in range(len(motion_programs))]
+    if len(motion_programs) != len(tasks):
+        raise ValueError(
+            f"Motion program count ({len(motion_programs)}) != task count ({len(tasks)})"
+        )
+    if len(tasks) <= 1:
+        raise ValueError("Multimove program must have at least two tasks")
+    return tasks
+
+
+def _prepare_multimove_files(
+    ramdisk: str,
+    motion_programs: list[MotionProgram],
+    tasks: list[str],
+    preempt_number: int | None = None,
+    seqno: int | None = None,
+) -> list[tuple[str, bytes]]:
+    """Build (filename, bytes) pairs for each task in a MultiMove program."""
+    return [
+        _get_motion_program_file(ramdisk, mp, task, preempt_number, seqno=seqno)
+        for mp, task in zip(motion_programs, tasks)
+    ]
+
+
+def _parse_event_log_for_result(log_after_raw: list, prev_seqnum: int) -> str:
+    """Extract result log filename from event log entries after execution.
+
+    Returns the log filename. Raises RuntimeError on failure or errors.
+    """
+    log_after = []
+    for entry in log_after_raw:
+        if entry.seqnum > prev_seqnum:
+            log_after.append(entry)
+        elif prev_seqnum > 61440 and entry.seqnum < 4096:
+            # Handle uint16 wraparound
+            log_after.append(entry)
+        else:
+            break
+
+    failed = False
+    for entry in log_after:
+        if (
+            entry.msgtype >= 2
+            and entry.args
+            and entry.args[0].lower() == "motion program failed"
+        ):
+            raise RuntimeError(
+                f"{entry.args[1]} {entry.args[2]} {entry.args[3]} {entry.args[4]}"
+            )
+        if entry.msgtype >= 3:
+            failed = True
+
+    if failed:
+        raise RuntimeError("Motion Program Failed, see robot error log for details")
+
+    found_log_open = False
+    found_log_close = False
+    log_filename = ""
+
+    for entry in reversed(log_after):
+        if entry.code == 80003:
+            if entry.args[0].lower() == "motion program log file closed":
+                if found_log_open:
+                    if found_log_close:
+                        raise RuntimeError("Found more than one log closed message")
+                    found_log_close = True
+
+            if entry.args[0].lower() == "motion program log file opened":
+                if found_log_open:
+                    raise RuntimeError("Found more than one log opened message")
+                found_log_open = True
+                log_filename_m = re.search(r"(log\-[\d\-]+\.bin)", entry.args[1])
+                if not log_filename_m:
+                    raise RuntimeError("Invalid log opened message")
+                log_filename = log_filename_m.group(1)
+
+    if not (found_log_open and found_log_close and log_filename):
+        raise RuntimeError("Could not find log file messages in robot event log")
+
+    return log_filename
 
 
 tool0 = tooldata(
@@ -291,19 +387,9 @@ class MotionProgramExecClient:
         seqno: int | None = None,
     ):
         """Execute a motion program on a MultiMove system with multiple robots."""
-        if tasks is None:
-            tasks = [f"T_ROB{i + 1}" for i in range(len(motion_programs))]
-
-        if len(motion_programs) != len(tasks):
-            raise ValueError("Motion program list and task list must have same length")
-        if len(tasks) <= 1:
-            raise ValueError("Multimove program must have at least two tasks")
-
+        tasks = _validate_multimove(motion_programs, tasks)
         ramdisk = self.abb_client.get_ramdisk_path()
-        files = [
-            _get_motion_program_file(ramdisk, mp, task, seqno=seqno)
-            for mp, task in zip(motion_programs, tasks)
-        ]
+        files = _prepare_multimove_files(ramdisk, motion_programs, tasks, seqno=seqno)
 
         def _upload():
             for filename, data in files:
@@ -324,19 +410,11 @@ class MotionProgramExecClient:
         seqno: int | None = None,
     ):
         """Preempt a MultiMove motion program."""
-        if tasks is None:
-            tasks = [f"T_ROB{i + 1}" for i in range(len(motion_programs))]
-
-        if len(motion_programs) != len(tasks):
-            raise ValueError("Motion program list and task list must have same length")
-        if len(tasks) <= 1:
-            raise ValueError("Multimove program must have at least two tasks")
-
+        tasks = _validate_multimove(motion_programs, tasks)
         ramdisk = self.abb_client.get_ramdisk_path()
-        for mp, task in zip(motion_programs, tasks):
-            filename, b = _get_motion_program_file(
-                ramdisk, mp, task, preempt_number, seqno=seqno
-            )
+        for filename, b in _prepare_multimove_files(
+            ramdisk, motion_programs, tasks, preempt_number, seqno=seqno
+        ):
             self.abb_client.upload_file(filename, b)
         self.abb_client.set_analog_io("motion_program_preempt_cmd_num", preempt_cmdnum)
         self.abb_client.set_analog_io("motion_program_preempt", preempt_number)
@@ -377,57 +455,9 @@ class MotionProgramExecClient:
         self, prev_seqnum: int
     ) -> MotionProgramResultLog:
         """Read a motion program result log after completion."""
-        log_after_raw = self.abb_client.read_event_log()
-        log_after = []
-        for entry in log_after_raw:
-            if entry.seqnum > prev_seqnum:
-                log_after.append(entry)
-            elif prev_seqnum > 61440 and entry.seqnum < 4096:
-                # Handle uint16 wraparound
-                log_after.append(entry)
-            else:
-                break
-
-        failed = False
-        for entry in log_after:
-            if (
-                entry.msgtype >= 2
-                and entry.args
-                and entry.args[0].lower() == "motion program failed"
-            ):
-                raise RuntimeError(
-                    f"{entry.args[1]} {entry.args[2]} {entry.args[3]} {entry.args[4]}"
-                )
-            if entry.msgtype >= 3:
-                failed = True
-
-        if failed:
-            raise RuntimeError("Motion Program Failed, see robot error log for details")
-
-        found_log_open = False
-        found_log_close = False
-        log_filename = ""
-
-        for entry in reversed(log_after):
-            if entry.code == 80003:
-                if entry.args[0].lower() == "motion program log file closed":
-                    if found_log_open:
-                        if found_log_close:
-                            raise RuntimeError("Found more than one log closed message")
-                        found_log_close = True
-
-                if entry.args[0].lower() == "motion program log file opened":
-                    if found_log_open:
-                        raise RuntimeError("Found more than one log opened message")
-                    found_log_open = True
-                    log_filename_m = re.search(r"(log\-[\d\-]+\.bin)", entry.args[1])
-                    if not log_filename_m:
-                        raise RuntimeError("Invalid log opened message")
-                    log_filename = log_filename_m.group(1)
-
-        if not (found_log_open and found_log_close and log_filename):
-            raise RuntimeError("Could not find log file messages in robot event log")
-
+        log_filename = _parse_event_log_for_result(
+            self.abb_client.read_event_log(), prev_seqnum
+        )
         ramdisk = self.abb_client.get_ramdisk_path()
         log_contents = self.abb_client.read_file(f"{ramdisk}/{log_filename}")
         try:
