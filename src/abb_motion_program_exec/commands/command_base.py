@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import inspect
+
 
 class command_append_method:
     def __init__(self, command_cls):
@@ -21,7 +24,7 @@ class command_append_method:
 
     def __get__(self, obj, cls=None):
         if obj is None:
-            raise Exception("command_append_method must be called on an instance")
+            raise AttributeError("command_append_method must be called on an instance")
 
         def command_append_func(*args, **kwargs):
             cmd = self._command_cls(*args, **kwargs)
@@ -34,6 +37,7 @@ class command_append_method:
         sig = sig.replace(parameters=tuple(sig.parameters.values())[1:])
         ret.__signature__ = sig
         return ret
+
 
 class CommandBase:
     pass
