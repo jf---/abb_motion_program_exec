@@ -39,6 +39,22 @@ robotraconteur = [
 [tool.setuptools.package-data]
 "abb_motion_program_exec.robotraconteur" = ["*.robdef"]
 
+[tool.unasyncd]
+add_editors_note = true
+ruff_fix = true
+ruff_format = true
+transform_docstrings = true
+
+[tool.unasyncd.files]
+"src/abb_motion_program_exec/abb_motion_program_exec_client_aio.py" = "src/abb_motion_program_exec/_sync_client.py"
+
+[tool.unasyncd.per_file_add_replacements."src/abb_motion_program_exec/abb_motion_program_exec_client_aio.py"]
+"abb_robot_client.rws_aio.RWS_AIO" = "abb_robot_client.rws.RWS"
+"abb_client_aio" = "abb_client"
+"MotionProgramExecClientAIO" = "MotionProgramExecClient"
+"asyncio.sleep" = "time.sleep"
+"Async client" = "Synchronous client"
+
 [tool.pixi.workspace]
 channels = ["conda-forge"]
 platforms = ["osx-arm64", "linux-64"]

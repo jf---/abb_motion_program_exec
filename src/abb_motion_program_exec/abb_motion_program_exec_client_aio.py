@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 
 class MotionProgramExecClientAIO:
-    """Client to execute motion programs on an ABB IRC5 controller using AsyncIO."""
+    """Async client to execute motion programs on an ABB IRC5 controller via RWS."""
 
     def __init__(
         self,
