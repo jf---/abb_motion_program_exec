@@ -27,7 +27,7 @@ import numpy as np
 from abb_robot_client.rws import RWS
 
 from .commands import commands, egm_commands, util
-from .commands.command_base import command_append_method
+from .commands.command_base import CommandBase, command_append_method
 from .commands.egm_commands import *  # noqa: F401,F403
 from .commands.egm_commands import EGMConfig
 from .commands.rapid_types import *  # noqa: F401,F403
@@ -83,10 +83,16 @@ tool0 = tooldata(
     pose([0, 0, 0], [1, 0, 0, 0]),
     loaddata(0.001, [0, 0, 0.001], [1, 0, 0, 0], 0, 0, 0),
 )
+"""Default tool — identity frame, near-zero mass. Matches ABB RAPID built-in ``tool0``."""
+
 wobj0 = wobjdata(
     False, True, "", pose([0, 0, 0], [1, 0, 0, 0]), pose([0, 0, 0], [1, 0, 0, 0])
 )
+"""Default work object — world frame. Matches ABB RAPID built-in ``wobj0``."""
+
 load0 = loaddata(0.001, [0, 0, 0.001], [1, 0, 0, 0], 0, 0, 0)
+"""Default payload — near-zero mass (0.001 kg avoids division-by-zero in dynamics).
+Matches ABB RAPID built-in ``load0``."""
 
 
 class MotionProgram:
@@ -122,7 +128,7 @@ class MotionProgram:
         seqno: int = 0,
         gripload: loaddata | None = None,
     ):
-        self._commands: list = []
+        self._commands: list[CommandBase] = []
 
         if timestamp is None:
             timestamp = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S-%f")[:-2]

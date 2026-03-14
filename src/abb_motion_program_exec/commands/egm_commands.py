@@ -23,9 +23,26 @@ from . import util
 from .command_base import CommandBase
 from .rapid_types import pose, robtarget, speeddata, zonedata
 
+__all__ = [
+    "EGMRunJointCommand",
+    "EGMRunPoseCommand",
+    "EGMMoveLCommand",
+    "EGMMoveCCommand",
+    "egm_minmax",
+    "egmframetype",
+    "EGMStreamConfig",
+    "EGMJointTargetConfig",
+    "EGMPoseTargetConfig",
+    "EGMPathCorrectionConfig",
+    "EGMConfig",
+    "write_egm_config",
+]
+
 
 @dataclass
 class EGMRunJointCommand(CommandBase):
+    """Run EGM joint-space streaming control."""
+
     command_opcode = 50001
 
     cond_time: float
@@ -40,11 +57,11 @@ class EGMRunJointCommand(CommandBase):
     def to_rapid(self, **kwargs) -> str:
         raise NotImplementedError("EGM not supported for RAPID generation")
 
-    _append_method_doc = ""
-
 
 @dataclass
 class EGMRunPoseCommand(CommandBase):
+    """Run EGM Cartesian pose streaming control."""
+
     command_opcode = 50002
 
     cond_time: float
@@ -61,11 +78,11 @@ class EGMRunPoseCommand(CommandBase):
     def to_rapid(self, **kwargs) -> str:
         raise NotImplementedError("EGM not supported for RAPID generation")
 
-    _append_method_doc = ""
-
 
 @dataclass
 class EGMMoveLCommand(CommandBase):
+    """Linear move with EGM path correction."""
+
     command_opcode = 50003
 
     to_point: robtarget
@@ -80,11 +97,11 @@ class EGMMoveLCommand(CommandBase):
     def to_rapid(self, **kwargs) -> str:
         raise NotImplementedError("EGM not supported for RAPID generation")
 
-    _append_method_doc = ""
-
 
 @dataclass
 class EGMMoveCCommand(CommandBase):
+    """Circular move with EGM path correction."""
+
     command_opcode = 50004
 
     cir_point: robtarget
@@ -100,8 +117,6 @@ class EGMMoveCCommand(CommandBase):
 
     def to_rapid(self, **kwargs) -> str:
         raise NotImplementedError("EGM not supported for RAPID generation")
-
-    _append_method_doc = ""
 
 
 class egm_minmax(NamedTuple):

@@ -24,6 +24,8 @@ from .rapid_types import CirPathModeSwitch, jointtarget, robtarget, speeddata, z
 
 @dataclass
 class MoveAbsJCommand(CommandBase):
+    """Move to absolute joint position."""
+
     command_opcode = 1
 
     to_joint_pos: jointtarget
@@ -43,11 +45,11 @@ class MoveAbsJCommand(CommandBase):
             f"motion_program_tool\\Wobj:=motion_program_wobj;"
         )
 
-    _append_method_doc = ""
-
 
 @dataclass
 class MoveJCommand(CommandBase):
+    """Move to Cartesian position using joint interpolation."""
+
     command_opcode = 2
 
     to_point: robtarget
@@ -67,11 +69,11 @@ class MoveJCommand(CommandBase):
             f"motion_program_tool\\Wobj:=motion_program_wobj;"
         )
 
-    _append_method_doc = ""
-
 
 @dataclass
 class MoveLCommand(CommandBase):
+    """Move to Cartesian position using linear interpolation."""
+
     command_opcode = 3
 
     to_point: robtarget
@@ -91,11 +93,11 @@ class MoveLCommand(CommandBase):
             f"motion_program_tool\\Wobj:=motion_program_wobj;"
         )
 
-    _append_method_doc = ""
-
 
 @dataclass
 class MoveCCommand(CommandBase):
+    """Move along a circular arc through a via point to a destination."""
+
     command_opcode = 4
 
     cir_point: robtarget
@@ -118,11 +120,11 @@ class MoveCCommand(CommandBase):
             f"motion_program_tool\\Wobj:=motion_program_wobj;"
         )
 
-    _append_method_doc = ""
-
 
 @dataclass
 class WaitTimeCommand(CommandBase):
+    """Wait for a specified time in seconds."""
+
     command_opcode = 5
 
     t: float
@@ -133,11 +135,11 @@ class WaitTimeCommand(CommandBase):
     def to_rapid(self, **kwargs) -> str:
         return f"WaitTime {self.t};"
 
-    _append_method_doc = ""
-
 
 @dataclass
 class CirPathModeCommand(CommandBase):
+    """Set circular path reorientation mode for MoveC commands."""
+
     command_opcode = 6
 
     switch: CirPathModeSwitch
@@ -163,11 +165,11 @@ class CirPathModeCommand(CommandBase):
             return r"CirPathMode\Wrist56;"
         raise ValueError("Invalid CirPathMode switch")
 
-    _append_method_doc = ""
-
 
 @dataclass
 class SyncMoveOnCommand(CommandBase):
+    """Enable synchronized MultiMove motion."""
+
     command_opcode = 7
 
     def write_params(self, f: io.IOBase):
@@ -176,10 +178,10 @@ class SyncMoveOnCommand(CommandBase):
     def to_rapid(self, **kwargs) -> str:
         return "SyncMoveOn motion_program_sync1,task_list;"
 
-    _append_method_doc = ""
-
 
 class SyncMoveOffCommand(CommandBase):
+    """Disable synchronized MultiMove motion."""
+
     command_opcode = 8
 
     def write_params(self, f: io.IOBase):
@@ -187,5 +189,3 @@ class SyncMoveOffCommand(CommandBase):
 
     def to_rapid(self, **kwargs) -> str:
         return "SyncMoveOff motion_program_sync2;"
-
-    _append_method_doc = ""

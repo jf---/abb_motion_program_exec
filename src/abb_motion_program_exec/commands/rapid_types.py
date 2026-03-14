@@ -27,6 +27,60 @@ import numpy as np
 
 from . import util
 
+__all__ = [
+    "speeddata",
+    "v5",
+    "v10",
+    "v20",
+    "v30",
+    "v40",
+    "v50",
+    "v60",
+    "v80",
+    "v100",
+    "v150",
+    "v200",
+    "v300",
+    "v400",
+    "v500",
+    "v600",
+    "v800",
+    "v1000",
+    "v1500",
+    "v2000",
+    "v2500",
+    "v3000",
+    "v4000",
+    "v5000",
+    "v6000",
+    "v7000",
+    "vmax",
+    "zonedata",
+    "fine",
+    "z0",
+    "z1",
+    "z5",
+    "z10",
+    "z15",
+    "z20",
+    "z30",
+    "z40",
+    "z50",
+    "z60",
+    "z80",
+    "z100",
+    "z150",
+    "z200",
+    "jointtarget",
+    "pose",
+    "confdata",
+    "robtarget",
+    "loaddata",
+    "tooldata",
+    "wobjdata",
+    "CirPathModeSwitch",
+]
+
 
 class speeddata(NamedTuple):
     """ABB RAPID ``speeddata`` structure.
@@ -197,17 +251,20 @@ class pose(NamedTuple):
 
 
 class confdata(NamedTuple):
-    """ABB RAPID ``confdata`` structure. This structure has a very peculiar meaning.
-    See the reference manual for details."""
+    """ABB RAPID ``confdata`` structure — robot axis configuration data.
+
+    Each field indicates which quadrant (90-degree sector) the corresponding axis
+    occupies. See ABB "Technical reference manual" for the full definition.
+    """
 
     cf1: float
-    """cf1"""
+    """Quadrant number for axis 1 rotation"""
     cf4: float
-    """cf4"""
+    """Quadrant number for axis 4 rotation"""
     cf6: float
-    """cf6"""
+    """Quadrant number for axis 6 rotation"""
     cfx: float
-    """cfx"""
+    """Robot configuration number (wrist/elbow/shoulder flags)"""
 
     def to_rapid(self) -> str:
         return util.nums_to_rapid_array([self.cf1, self.cf4, self.cf6, self.cfx])
