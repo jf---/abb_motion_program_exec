@@ -163,3 +163,4 @@ site/
 .pixi/
 pixi.lock
 .DS_Store
+.worktrees/
