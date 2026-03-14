@@ -160,3 +160,6 @@ cython_debug/
 #.idea/
 
 docs/readme.md
+.pixi/
+pixi.lock
+.DS_Store
